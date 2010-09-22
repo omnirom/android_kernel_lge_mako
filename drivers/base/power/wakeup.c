@@ -17,7 +17,6 @@
 #include <linux/types.h>
 #include <trace/events/power.h>
 
-
 #include "power.h"
 
 #define TIMEOUT		100
@@ -642,7 +641,10 @@ void pm_get_active_wakeup_sources(char *pending_wakeup_source, size_t max)
 }
 EXPORT_SYMBOL_GPL(pm_get_active_wakeup_sources);
 
-static void print_active_wakeup_sources(void)
+/**
+ * pm_wakeup_update_hit_counts - Update hit counts of all active wakeup sources.
+ */
+static void pm_wakeup_update_hit_counts(void)
 {
 	unsigned long flags;
 	struct wakeup_source *ws;
