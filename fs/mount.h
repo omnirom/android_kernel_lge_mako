@@ -4,6 +4,7 @@
 
 struct mnt_namespace {
 	atomic_t		count;
+	unsigned int		proc_inum;
 	struct mount *	root;
 	struct list_head	list;
 	u64			seq;	/* Sequence number to prevent loops */
