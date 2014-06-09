@@ -511,6 +511,8 @@ struct wiphy *wlan_hdd_cfg80211_wiphy_alloc(int priv_size)
         return NULL;
     }
 
+    wiphy->country_ie_pref = NL80211_COUNTRY_IE_IGNORE_CORE;
+
     return wiphy;
 }
 
@@ -4686,19 +4688,31 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
         if( request->ie_len )
         {
             /* save this for future association (join requires this) */
+            /*TODO: Array needs to be converted to dynamic allocation,
+             * as multiple ie.s can be sent in cfg80211_scan_request structure
+             * CR 597966
+             */
             memset( &pScanInfo->scanAddIE, 0, sizeof(pScanInfo->scanAddIE) );
             memcpy( pScanInfo->scanAddIE.addIEdata, request->ie, request->ie_len);
             pScanInfo->scanAddIE.length = request->ie_len;
 
-            if((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) ||
+            if ((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) ||
                 (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode) ||
-                (WLAN_HDD_P2P_DEVICE == pAdapter->device_mode)
-              )
+                (WLAN_HDD_P2P_DEVICE == pAdapter->device_mode))
             {
-               pwextBuf->roamProfile.pAddIEScan = pScanInfo->scanAddIE.addIEdata;
-               pwextBuf->roamProfile.nAddIEScanLength = pScanInfo->scanAddIE.length;
-            }
+                if ( request->ie_len <= SIR_MAC_MAX_IE_LENGTH)
+                {
+                    pwextBuf->roamProfile.nAddIEScanLength = request->ie_len;
+                    memcpy( pwextBuf->roamProfile.addIEScan,
+                                     request->ie, request->ie_len);
+                }
+                else
+                {
+                    hddLog(VOS_TRACE_LEVEL_ERROR, "Scan Ie length is invalid:"
+                             "%d", request->ie_len);
+                }
 
+            }
             scanRequest.uIEFieldLen = pScanInfo->scanAddIE.length;
             scanRequest.pIEField = pScanInfo->scanAddIE.addIEdata;
 
@@ -7568,15 +7582,6 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     hdd_context_t *pHddCtx = wiphy_priv(wiphy);
     int status;
-#ifdef WLAN_FEATURE_TDLS_DEBUG
-    const char *tdls_oper_str[]= {
-        "NL80211_TDLS_DISCOVERY_REQ",
-        "NL80211_TDLS_SETUP",
-        "NL80211_TDLS_TEARDOWN",
-        "NL80211_TDLS_ENABLE_LINK",
-        "NL80211_TDLS_DISABLE_LINK",
-        "NL80211_TDLS_UNKNOWN_OPER"};
-#endif
 
     if ( NULL == peer )
     {
@@ -7594,15 +7599,6 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
         return status;
     }
 
-#ifdef WLAN_FEATURE_TDLS_DEBUG
-    if((int)oper > 4)
-        oper = 5;
-
-    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-               "%s: " MAC_ADDRESS_STR " %d (%s) ", "tdls_oper",
-               MAC_ADDR_ARRAY(peer), (int)oper,
-               tdls_oper_str[(int)oper]);
-#endif
 
     if( FALSE == pHddCtx->cfg_ini->fEnableTDLSSupport ||
         FALSE == sme_IsFeatureSupportedByFW(TDLS))
@@ -7701,7 +7697,63 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
             }
             break;
         case NL80211_TDLS_TEARDOWN:
+            {
+                hddTdlsPeer_t *pTdlsPeer;
+                VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                          " %s : NL80211_TDLS_TEARDOWN for " MAC_ADDRESS_STR,
+                          __func__, MAC_ADDR_ARRAY(peer));
+
+                if ( (FALSE == pHddCtx->cfg_ini->fTDLSExternalControl) ||
+                     (FALSE == pHddCtx->cfg_ini->fEnableTDLSImplicitTrigger) ) {
+
+                    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                          " %s TDLS External control and Implicit Trigger not enabled ",
+                          __func__);
+                    return -ENOTSUPP;
+                }
+
+                if ( 0 != wlan_hdd_tdls_remove_force_peer(pAdapter, peer) )
+                    return -EINVAL;
+
+                pTdlsPeer = wlan_hdd_tdls_find_peer(pAdapter, peer);
+
+                if ( NULL == pTdlsPeer ) {
+                    hddLog(VOS_TRACE_LEVEL_INFO, "%s: " MAC_ADDRESS_STR
+                           " (oper %d) peer not exsting",
+                           __func__, MAC_ADDR_ARRAY(peer));
+                }
+                else {
+                    wlan_hdd_tdls_indicate_teardown(pAdapter, pTdlsPeer,
+                                       eSIR_MAC_TDLS_TEARDOWN_UNSPEC_REASON);
+                }
+                break;
+            }
         case NL80211_TDLS_SETUP:
+            {
+                hddTdlsPeer_t *pTdlsPeer;
+                VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                          " %s : NL80211_TDLS_SETUP for " MAC_ADDRESS_STR,
+                          __func__, MAC_ADDR_ARRAY(peer));
+
+                if ( (FALSE == pHddCtx->cfg_ini->fTDLSExternalControl) ||
+                     (FALSE == pHddCtx->cfg_ini->fEnableTDLSImplicitTrigger) ) {
+
+                    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                          " %s TDLS External control and Implicit Trigger not enabled ",
+                          __func__);
+                    return -ENOTSUPP;
+                }
+
+                if ( 0 != wlan_hdd_tdls_add_force_peer(pAdapter, peer) )
+                    return -EINVAL;
+                /* To cater the requirement of establishing the TDLS link
+                 * irrespective of the data traffic , get an entry of TDLS peer.
+                 */
+                pTdlsPeer = wlan_hdd_tdls_get_peer(pAdapter, peer);
+                if (pTdlsPeer == NULL)
+                    return -EINVAL;
+                break;
+            }
         case NL80211_TDLS_DISCOVERY_REQ:
             /* We don't support in-driver setup/teardown/discovery */
             return -ENOTSUPP;

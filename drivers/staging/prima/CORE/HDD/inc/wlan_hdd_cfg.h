@@ -1342,13 +1342,6 @@ typedef enum
 #define CFG_P2P_DEVICE_ADDRESS_ADMINISTRATED_MAX                 ( 1 )
 #define CFG_P2P_DEVICE_ADDRESS_ADMINISTRATED_DEFAULT             ( 0 )
 
-#ifdef WLAN_FEATURE_PACKET_FILTERING
-#define CFG_MC_ADDR_LIST_FILTER_NAME               "isMcAddrListFilter"
-#define CFG_MC_ADDR_LIST_FILTER_MIN                ( 0 )
-#define CFG_MC_ADDR_LIST_FILTER_MAX                ( 1 )
-#define CFG_MC_ADDR_LIST_FILTER_DEFAULT            ( 0 )
-#endif
-
 #define CFG_ENABLE_SSR                      "gEnableSSR"
 #define CFG_ENABLE_SSR_MIN                  ( 0 )
 #define CFG_ENABLE_SSR_MAX                  ( 1 )
@@ -1608,7 +1601,7 @@ typedef enum
 #define CFG_TDLS_IMPLICIT_TRIGGER_DEFAULT           ( 0 )
 
 #define CFG_TDLS_TX_STATS_PERIOD                    "gTDLSTxStatsPeriod"
-#define CFG_TDLS_TX_STATS_PERIOD_MIN                ( 2000 )
+#define CFG_TDLS_TX_STATS_PERIOD_MIN                ( 10 )
 #define CFG_TDLS_TX_STATS_PERIOD_MAX                ( 4294967295UL )
 #define CFG_TDLS_TX_STATS_PERIOD_DEFAULT            ( 5000 )
 
@@ -1633,7 +1626,7 @@ typedef enum
 #define CFG_TDLS_IDLE_TIMEOUT_DEFAULT               ( 5000 )
 
 #define CFG_TDLS_IDLE_PACKET_THRESHOLD              "gTDLSIdlePacketThreshold"
-#define CFG_TDLS_IDLE_PACKET_THRESHOLD_MIN          ( 1 )
+#define CFG_TDLS_IDLE_PACKET_THRESHOLD_MIN          ( 0 )
 #define CFG_TDLS_IDLE_PACKET_THRESHOLD_MAX          ( 40000 )
 #define CFG_TDLS_IDLE_PACKET_THRESHOLD_DEFAULT      ( 5 )
 
@@ -1651,6 +1644,11 @@ typedef enum
 #define CFG_TDLS_RSSI_TEARDOWN_THRESHOLD_MIN        ( -120 )
 #define CFG_TDLS_RSSI_TEARDOWN_THRESHOLD_MAX        ( 0 )
 #define CFG_TDLS_RSSI_TEARDOWN_THRESHOLD_DEFAULT    ( -75 )
+
+#define CFG_TDLS_EXTERNAL_CONTROL                   "gTDLSExternalControl"
+#define CFG_TDLS_EXTERNAL_CONTROL_MIN               (0)
+#define CFG_TDLS_EXTERNAL_CONTROL_MAX               (1)
+#define CFG_TDLS_EXTERNAL_CONTROL_DEFAULT           (0)
 #endif
 
 #ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
@@ -1777,6 +1775,16 @@ typedef enum
 #define CFG_SPLIT_SCAN_TRAFFIC_MONITOR_TIMER_MIN       ( 1000 )
 #define CFG_SPLIT_SCAN_TRAFFIC_MONITOR_TIMER_MAX       ( 10000 )
 #define CFG_SPLIT_SCAN_TRAFFIC_MONITOR_TIMER_DEFAULT   ( 5000 )
+
+#define CFG_RA_FILTER_ENABLE_NAME               "gRAFilterEnable"
+#define CFG_RA_FILTER_ENABLE_DEFAULT            (1)
+#define CFG_RA_FILTER_ENABLE_MIN                (0)
+#define CFG_RA_FILTER_ENABLE_MAX                (1)
+
+#define CFG_RA_RATE_LIMIT_INTERVAL_NAME         "gRARateLimitInterval"
+#define CFG_RA_RATE_LIMIT_INTERVAL_DEFAULT      (60)
+#define CFG_RA_RATE_LIMIT_INTERVAL_MIN          (0)
+#define CFG_RA_RATE_LIMIT_INTERVAL_MAX          (60)
 
 /*--------------------------------------------------------------------------- 
   Type declarations
@@ -2105,9 +2113,6 @@ typedef struct
    v_U8_t                      allowMCCGODiffBI;
    v_BOOL_t                    isP2pDeviceAddrAdministrated;
    v_U8_t                      thermalMitigationEnable;
-#ifdef WLAN_FEATURE_PACKET_FILTERING
-   v_BOOL_t                    isMcAddrListFilter;
-#endif
 #ifdef WLAN_FEATURE_11AC
    v_U8_t                      vhtChannelWidth;
    v_U8_t                      vhtRxMCS;
@@ -2135,6 +2140,7 @@ typedef struct
    v_U32_t                     fTDLSRSSIHysteresis;
    v_S31_t                     fTDLSRSSITriggerThreshold;
    v_S31_t                     fTDLSRSSITeardownThreshold;
+   v_BOOL_t                    fTDLSExternalControl;
 #endif
    v_U32_t                     enableLpwrImgTransition;
 #ifdef WLAN_SOFTAP_VSTA_FEATURE
@@ -2159,6 +2165,8 @@ typedef struct
    v_U32_t                     cfgMaxMediumTime;
    v_U8_t                      enableTrafficMonitor;
    v_U32_t                     trafficIdleTimeout;
+   v_BOOL_t                    cfgRAFilterEnable;
+   v_U16_t                     cfgRARateLimitInterval;
 } hdd_config_t;
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation
