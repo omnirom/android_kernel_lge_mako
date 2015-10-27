@@ -1254,7 +1254,7 @@ static struct resource qcrypto_resources[] = {
 };
 
 static struct resource qcedev_resources[] = {
-	[0] = {extern int cpufreq_stats_platform_cpu_power_read_tables(int cpunum,  u32 *out_values, size_t num);
+	[0] = {
 		.start = QCE_0_BASE,
 		.end = QCE_0_BASE + QCE_SIZE - 1,
 		.flags = IORESOURCE_MEM,
